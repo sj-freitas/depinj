@@ -18,11 +18,6 @@ export interface ServiceGetter {
  */
 const dependencyInjectionContextSymbol = Symbol('dependencyInjectionContext');
 
-interface EventListener<T> {
-  instance: T;
-  eventName: string;
-}
-
 interface ServiceHandle<T, TContext> {
   instance: T;
   onScopeEnd: (instance: T, context: TContext) => void;
@@ -43,19 +38,17 @@ interface DependencyContext {
  */
 export class Injector<TContext> implements ServiceGetter {
   private readonly isMainScope: boolean;
-
   private readonly scope: DependencyContext & TContext;
-
   private readonly registry: Registry;
-
   private readonly singleInstanceServices: Map<string, ServiceHandle<any, any>>;
 
   /**
    * Creates an instance of an injector. The injector is a type that can retrieve instances from keys and create new scopes.
+   * The responsibility of this class is also to keep track of the children instances so that these can be re-used whenever
+   * the scope matches or instances are disposed.
    *
    * @param scope - The scope to bind this injector to.
    * @param registry - The registry in which this injector and all its descendants are based in.
-   * @param onScopeEnd - A callback hook that when called will dispose of all the services that require disposal.
    * @param singleInstanceServices - The single instance services that are already created. This optional parameter should only be
    * set by the "createScope" method.
    * @param isMainScope - Indicates that this is the main scope in order to dispose of the single instance services in case that
@@ -64,7 +57,6 @@ export class Injector<TContext> implements ServiceGetter {
   constructor(
     scope: TContext,
     registry: Registry,
-    onScopeEnd?: EventListener<any>,
     singleInstanceServices: Map<string, ServiceHandle<TContext, any>> = new Map<
       string,
       ServiceHandle<TContext, any>
@@ -78,38 +70,7 @@ export class Injector<TContext> implements ServiceGetter {
     // Re-use the scoped instances in case one is already defined, otherwise, create a new one.
     // Bind the dependency injection to the scope if not already bound
     if (!this.scope[dependencyInjectionContextSymbol]) {
-      const scopedServices = new Map<string, ServiceHandle<any, TContext>>();
-      const onDemandServices: ServiceHandle<any, TContext>[] = [];
-      const singleInstanceServices = this.isMainScope
-        ? this.singleInstanceServices
-        : undefined;
-
-      if (onScopeEnd) {
-        // Need to override the current scope's end function to add an interceptor that calls the injector's
-        // implementation of on scope end.
-        const methodToOverride: Function =
-          onScopeEnd.instance[onScopeEnd.eventName];
-        onScopeEnd.instance[onScopeEnd.eventName] = (...argsArray: any) => {
-          // Inject the DI event listener.
-          const singleInstanceServicesArray = Array.from(
-            singleInstanceServices?.values() || []
-          );
-          Injector.onScopeEnd<TContext>(
-            Array.from(scopedServices.values()),
-            onDemandServices,
-            singleInstanceServicesArray,
-            scope
-          );
-
-          // Execute the regular expression.
-          return methodToOverride.apply(onScopeEnd.instance, argsArray);
-        };
-      }
-
-      this.scope[dependencyInjectionContextSymbol] = {
-        scopedServices,
-        onDemandServices,
-      };
+      this.scope[dependencyInjectionContextSymbol] = Injector.createDependencyData<TContext>();
     }
 
     this.registry = registry;
@@ -171,6 +132,57 @@ export class Injector<TContext> implements ServiceGetter {
   }
 
   /**
+   * Creates a new scope based on the current scope. A new scoped Injector will not share scoped instances.
+   * However, all instances of type SingleInstance are shared.
+   *
+   * @param newScope - The scope instance to bind the new scope to.
+   * @param onScopeEnd - A callback to when the scope ends so that the scope can dispose of its services.
+   * @returns A new scope based on the current one.
+   */
+  public createScope<VContext>(
+    newScope: VContext,
+  ): Injector<VContext> {
+    // Creates a secondary scope from this instance.
+    return new Injector<VContext>(
+      newScope,
+      this.registry,
+      new Map(this.singleInstanceServices),
+      false
+    );
+  }
+
+  /**
+   * Callback to run whenever the scope is closed, it will run the "onScopeEnd" code
+   * for all the registered services.
+   * 
+   * It's of utmost importance that this method is called whenever a scope has ended
+   * to avoid possible memory leaks.
+   * 
+   * When endScope is called, the state of the Injector will be reset, therefore all
+   * the previously created instances will be removed.
+   */
+  public endScope() {
+    const scopedServices = this.scope[dependencyInjectionContextSymbol];
+
+    // Always clear the services that were created in the current child scope.
+    const servicesToDispose: ServiceHandle<TContext, any>[] = [
+      ...scopedServices.onDemandServices,
+      ...scopedServices.scopedServices.values(),
+    ];
+
+    if (this.isMainScope) {
+      // Only add the single instances if this is the main scope
+      servicesToDispose.push(...this.singleInstanceServices.values());
+    }
+
+    for (const { onScopeEnd, instance } of servicesToDispose) {
+      onScopeEnd(instance, this.scope);
+    }
+
+    this.scope[dependencyInjectionContextSymbol] = Injector.createDependencyData<TContext>();
+  }
+
+  /**
    * Auxiliary method, it will get-or-create an instance using the createInstance method. However if the instance is
    * already registered in the services map, it will be retrieved from there instead. The keys that are used will be
    * to search for any equivalent service, since a service can be registered with several keys.
@@ -180,7 +192,7 @@ export class Injector<TContext> implements ServiceGetter {
    * @param services - The services to check the existence of the instance for or to add the new instance to.
    * @returns A retrieved or newly created instance of the service matching one of the keys.
    */
-  private static getOrCreate<T, TContext>(
+   private static getOrCreate<T, TContext>(
     keys: string[],
     createInstance: () => ServiceHandle<T, TContext>,
     services: Map<string, ServiceHandle<T, TContext>>
@@ -207,48 +219,18 @@ export class Injector<TContext> implements ServiceGetter {
   }
 
   /**
-   * Creates a new scope based on the current scope. A new scoped Injector will not share scoped instances.
-   * However, all instances of type SingleInstance are shared.
-   *
-   * @param newScope - The scope instance to bind the new scope to.
-   * @param onScopeEnd - A callback to when the scope ends so that the scope can dispose of its services.
-   * @returns A new scope based on the current one.
+   * Auxiliary function that creates a new DependencyData. A DependencyData is an object that
+   * can decorate a context to save the dependency state. This value should not be exposed.
+   * 
+   * @returns A DependencyData with an empty state.
    */
-  public createScope<VContext>(
-    newScope: VContext,
-    onScopeEnd?: EventListener<any>
-  ): Injector<VContext> {
-    // Creates a secondary scope from this instance.
-    return new Injector<VContext>(
-      newScope,
-      this.registry,
-      onScopeEnd,
-      new Map(this.singleInstanceServices),
-      false
-    );
-  }
+  private static createDependencyData<TContext>(): DependencyData {
+    const scopedServices = new Map<string, ServiceHandle<any, TContext>>();
+    const onDemandServices: ServiceHandle<any, TContext>[] = [];
 
-  /**
-   * Callback to run whenever the scope is closed, it will run the "onScopeEnd" code
-   * for all the registered services.
-   *
-   * @param onDemandServices - Services that were created in this scope.
-   * @param scopedServices - Scoped Services that were created in this scope.
-   * @param singleInstanceServices
-   * @param context - The current context.
-   */
-  public static onScopeEnd<TContext>(
-    onDemandServices: ServiceHandle<any, any>[],
-    scopedServices: ServiceHandle<any, any>[],
-    singleInstanceServices: ServiceHandle<any, any>[],
-    context: TContext
-  ) {
-    const allServices = onDemandServices
-      .concat(scopedServices)
-      .concat(singleInstanceServices);
-
-    for (const { onScopeEnd, instance } of allServices) {
-      onScopeEnd(instance, context);
-    }
+    return {
+      scopedServices,
+      onDemandServices,
+    };
   }
 }

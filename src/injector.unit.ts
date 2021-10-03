@@ -68,14 +68,15 @@ describe('Injector', () => {
 
       const context = {
         offset: 3,
-        contextEnd: (value: string) => value,
+        contextEnd: (value: string) => {
+          injector.endScope();
+
+          return value;
+        }
       };
 
       // Bind the context end with the context instance.
-      const injector = new Injector(context, builder.build(), {
-        instance: context,
-        eventName: 'contextEnd',
-      });
+      const injector = new Injector(context, builder.build());
       const operation = injector.getService<MathOperation>('MathOperation');
 
       expect(mathOperationScopeEnd).not.toHaveBeenCalled();
