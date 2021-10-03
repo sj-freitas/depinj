@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "**/**.unit.ts",
+    "**/__mocks__"
+  ],
+  "compilerOptions": {
+    "outDir": "lib",
+    "allowJs": true,
+    "rootDir": "src"
+  },
+  "include": [
+    "src"
+  ]
+}
