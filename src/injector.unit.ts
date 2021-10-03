@@ -43,7 +43,7 @@ describe('Injector', () => {
       const context: AppContext = {
         offset: 3,
       };
-      const injector = new Injector(context, builder.build());
+      const injector = new Injector(builder.build(), context);
       const operation = injector.getService<MathOperation>('MathOperation');
 
       expect(operation.doMath(3, 5)).toBe(18);
@@ -76,7 +76,7 @@ describe('Injector', () => {
       };
 
       // Bind the context end with the context instance.
-      const injector = new Injector(context, builder.build());
+      const injector = new Injector(builder.build(), context);
       const operation = injector.getService<MathOperation>('MathOperation');
 
       expect(mathOperationScopeEnd).not.toHaveBeenCalled();

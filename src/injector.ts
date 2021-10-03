@@ -55,8 +55,8 @@ export class Injector<TContext> implements ServiceGetter {
    * these have sensitive resources. This optional parameter should only be set by the "createScope" method.
    */
   constructor(
-    scope: TContext,
     registry: Registry,
+    scope: TContext = {} as TContext,
     singleInstanceServices: Map<string, ServiceHandle<TContext, any>> = new Map<
       string,
       ServiceHandle<TContext, any>
@@ -144,8 +144,8 @@ export class Injector<TContext> implements ServiceGetter {
   ): Injector<VContext> {
     // Creates a secondary scope from this instance.
     return new Injector<VContext>(
-      newScope,
       this.registry,
+      newScope,
       new Map(this.singleInstanceServices),
       false
     );
