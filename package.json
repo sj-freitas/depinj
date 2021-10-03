@@ -1,5 +1,5 @@
 {
-  "name": "depinj",
+  "name": "depinj-js",
   "version": "1.0.0",
   "description": "A simple Dependency Injection library written in TypeScript compatible with vanilla JavaScript recommended for NodeJS.",
   "main": "lib/index.js",
