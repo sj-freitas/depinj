@@ -20,7 +20,8 @@ export interface ServiceConfiguration {
 }
 
 /**
- * A type alias to a Map of keys and service configurations that is used to build injectors.
+ * Represents the Dependency Tree, a type alias to a Map of keys and service configurations that
+ * is used to build injectors.
  */
 export type Registry = Map<string, ServiceConfiguration>;
 

@@ -4,10 +4,13 @@ import { ScopeType } from "./scope-type";
 
 /**
  * Exports a helper function that navigates within a registry and detects if there are any circular
- * dependencies or missing registrations. This function should only be used in the context of unit
- * tests in order to ensure that the registry is correctly built.
+ * dependencies, missing registrations or incorrect scope configurations.
+ * 
+ * This function should only be used in the context of unit tests in order to ensure that the registry
+ * is correctly built.
  *
  * @param registry - The registry to validate.
+ *
  * @returns - Array of strings containing all errors, empty if no errors were detected.
  */
 export function validateRegistry(registry: Registry): string[] {

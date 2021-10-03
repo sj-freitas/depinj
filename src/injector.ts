@@ -47,8 +47,8 @@ export class Injector<TContext> implements ServiceGetter {
    * The responsibility of this class is also to keep track of the children instances so that these can be re-used whenever
    * the scope matches or instances are disposed.
    *
-   * @param scope - The scope to bind this injector to.
    * @param registry - The registry in which this injector and all its descendants are based in.
+   * @param scope - The scope to bind this injector to.
    * @param singleInstanceServices - The single instance services that are already created. This optional parameter should only be
    * set by the "createScope" method.
    * @param isMainScope - Indicates that this is the main scope in order to dispose of the single instance services in case that
