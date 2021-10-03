@@ -146,7 +146,7 @@ export class Injector<TContext> implements ServiceGetter {
     return new Injector<VContext>(
       this.registry,
       newScope,
-      new Map(this.singleInstanceServices),
+      this.singleInstanceServices,
       false
     );
   }
