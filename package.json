@@ -1,6 +1,6 @@
 {
   "name": "depinj-js",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "A simple Dependency Injection library written in TypeScript compatible with vanilla JavaScript recommended for NodeJS.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -19,7 +19,7 @@
     "url": "https://github.com/sj-freitas/depinj/issues"
   },
   "keywords": ["dependency-injection", "di", "ioc"],
-  "homepage": "https://github.com/sj-freitas/depinj/tree/1.5.2#readme",
+  "homepage": "https://github.com/sj-freitas/depinj/tree/1.5.3#readme",
   "devDependencies": {
     "@types/jest": "^26.0.20",
     "@types/node": "^14.14.28",
