@@ -1,4 +1,4 @@
-# depinj - A Dependency Injection linrary
+# depinj - A Dependency Injection libary
 A simple Dependency Injection library written in TypeScript compatible with vanilla JavaScript recommended for NodeJS.
 
 ## Usage
